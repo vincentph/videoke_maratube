@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import '../models/video.dart';
 
 
 void main() {
@@ -42,17 +43,63 @@ class _MainScreenState extends State<MainScreen> {
     const Center(child: Text("Settings Page")),
   ];
 
+  // Example playlist with titles
+  final List<Map<String, String>> _playlist = [
+    {"id": "dQw4w9WgXcQ", "title": "Video 1: Never Gonna Give You Up"},
+    {"id": "3JZ_D3ELwOQ", "title": "Video 2: Smooth Criminal"},
+    {"id": "L_jWHffIx5E", "title": "Video 3: Numb - Linkin Park"},
+  ];
+
+  late final List<Video> _videos;
+  int _currentVideoIndex = 0;
+  
   @override
   void initState() {
     super.initState();
 
+    _videos = _playlist
+      .map((item) => Video(
+            id: item["id"]!,
+            title: item["title"]!,
+            thumbnailUrl:
+                "https://img.youtube.com/vi/${item["id"]!}/mqdefault.jpg", // YouTube thumbnail
+          ))
+      .toList();
+
+
     // Initialize YouTube player
     _controller = YoutubePlayerController(
-      initialVideoId: 'dQw4w9WgXcQ',
+      initialVideoId: _videos[_currentVideoIndex].id,
       flags: const YoutubePlayerFlags(autoPlay: true, mute: false),
-    );
+    )..addListener(_videoListener);
 
     _initializeGoogleSignIn();
+
+    
+
+    _controller = YoutubePlayerController(
+      initialVideoId: _playlist[0]["id"]!,
+      flags: const YoutubePlayerFlags(autoPlay: true, mute: false),
+    );      
+
+
+  }
+
+
+  void _videoListener() {
+    if (_controller.value.playerState == PlayerState.ended) {
+      _playNextVideo();
+    }
+  }
+
+  void _playNextVideo() {
+    setState(() {
+      _currentVideoIndex++;
+      if (_currentVideoIndex >= _videos.length) {
+        _currentVideoIndex = 0; // Loop back to first video
+      }
+      _controller.load(_videos[_currentVideoIndex].id);
+    });
   }
 
   void _initializeGoogleSignIn() {
@@ -90,6 +137,25 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
+
+/*
+  Future<List<Video>> fetchVideos(String playlistId) async {
+      final String url =
+          'https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&key=$apiKey&maxResults=50';
+
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        final List<dynamic> videosJson = data['items'];
+        List<Video> fetchedVideos =
+            videosJson.map((json) => Video.fromJson(json)).toList();
+        return fetchedVideos;
+      } else {
+        throw Exception('Failed to load playlists');
+      }
+  }  
+*/
   @override
   void dispose() {
     _controller.dispose();
@@ -117,12 +183,36 @@ class _MainScreenState extends State<MainScreen> {
                     showVideoProgressIndicator: true,
                   ),
                 ),
+
+              // Video list below the player
+              Expanded(
+                child: ListView.builder(
+                  itemCount: _videos.length,
+                  itemBuilder: (context, index) {
+                    final video = _videos[index];
+                    return ListTile(
+                      leading: Image.network(video.thumbnailUrl),
+                      title: Text(video.title),
+                      onTap: () {
+                        setState(() {
+                          _currentVideoIndex = index;
+                          _controller.load(_videos[_currentVideoIndex].id);
+                          if (_isMiniPlayer) toggleMiniPlayer();
+                        });
+                      },
+                    );
+                  },
+                ),
+              ),
+
               Expanded(child: _pages[_currentIndex]),
             ],
           ),
 
+
           if (_isMiniPlayer)
-            Positioned(
+            AnimatedPositioned(
+              duration: Duration(milliseconds: 300),
               top: 20,
               left: 20,
               child: LayoutBuilder(
@@ -171,7 +261,10 @@ class _MainScreenState extends State<MainScreen> {
         currentIndex: _currentIndex,
         onTap: (index) {
           setState(() => _currentIndex = index);
-          _isMiniPlayer = true;
+          _isMiniPlayer = false;
+          if (index != 0) {
+            _isMiniPlayer = true;
+          }
         },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
