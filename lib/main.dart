@@ -34,19 +34,19 @@ class _VideoScreenState extends State<VideoScreen>
   );
 
   // Sample video list (replace with your own video IDs)
-  final List<String> videos = [
-    'dQw4w9WgXcQ',
-    '9bZkp7q19f0',
-    '3JZ_D3ELwOQ',
-    'L_jWHffIx5E',
-    'oHg5SJYRHA0',
+  final List<Map<String, String>> videos = [
+    {'id': 'dQw4w9WgXcQ', 'title': 'Never Gonna Give You Up'},
+    {'id': '9bZkp7q19f0', 'title': 'Gangnam Style'},
+    {'id': '3JZ_D3ELwOQ', 'title': 'See You Again'},
+    {'id': 'L_jWHffIx5E', 'title': 'Smells Like Teen Spirit'},
+    {'id': 'oHg5SJYRHA0', 'title': 'Surprise Video'},
   ];
 
   @override
   void initState() {
     super.initState();
 
-    _controller.loadVideoById(videoId: videos[0]);
+    _controller.loadVideoById(videoId: videos[0]['id']!);
 
   }
 
@@ -75,15 +75,37 @@ class _VideoScreenState extends State<VideoScreen>
             return Stack(
               children: [
                 // Video player
-                
-                Align(
-                  alignment: Alignment.topCenter,
-                  child: SizedBox(
-                    width: size.width,
-                    height: videoHeight,
-                    child: YoutubePlayer(controller: _controller),
+                // Video player fixed at top
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: videoHeight,
+                  child: YoutubePlayer(controller: _controller),
+                ), // end of Positioned (video)
+
+                // Scrollable list below video
+                Positioned(
+                  top: videoHeight,
+                  left: 0,
+                  right: 0,
+                  bottom: 60, // leave space for icons
+                  child: ListView.builder(
+                    itemCount: videos.length,
+                    itemBuilder: (context, index) {
+                      final video = videos[index];
+                      return ListTile(
+                        leading: const Icon(Icons.play_circle_outline,
+                            color: Colors.white),
+                        title: Text(video['title']!,
+                            style: const TextStyle(color: Colors.white)),
+                        onTap: () {
+                          _controller.loadVideoById(videoId: video['id']!);
+                        },
+                      );
+                    },
                   ),
-                ), // end of Align (video player)
+                ), // end of Positioned (list)
 
                 // Bottom icon bar aligned at bottom
                 Align(
