@@ -1,5 +1,8 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
+import 'params.dart';
 
 void main() {
   runApp(VideokeMaraTube());
@@ -34,20 +37,137 @@ class _VideoScreenState extends State<VideoScreen>
   );
 
   // Sample video list (replace with your own video IDs)
-  final List<Map<String, String>> videos = [
-    {'id': 'dQw4w9WgXcQ', 'title': 'Never Gonna Give You Up'},
-    {'id': '9bZkp7q19f0', 'title': 'Gangnam Style'},
-    {'id': '3JZ_D3ELwOQ', 'title': 'See You Again'},
-    {'id': 'L_jWHffIx5E', 'title': 'Smells Like Teen Spirit'},
-    {'id': 'oHg5SJYRHA0', 'title': 'Surprise Video'},
-  ];
+  List<Map<String, String>> videos = [];
+  List<Map<String, String>> searchResults = [];
+  bool isLoading = true;
+  bool showList = true;
+  bool showSearchResults = false;
+
+  String? currentVideoId; // track the current playing video
 
   @override
   void initState() {
     super.initState();
+    fetchVideos();
 
-    _controller.loadVideoById(videoId: videos[0]['id']!);
+    //  Listen for video end event
+    _controller.listen((event) {
+      if (event.playerState == PlayerState.ended) {
+        // remove video when it ends
+        removeCurrentVideo();
+      }
+    });    
 
+  }
+
+//  const apiKey = 'AIzaSyBnnJYT9c0KY0yFxz7mbeT8t4sbds4_xOo'; // Replace this
+  Future<void> fetchVideos() async {
+    //const apiKey = 'AIzaSyBnnJYT9c0KY0yFxz7mbeT8t4sbds4_xOo';
+    final apiKey = youtubeApiKey;
+    const searchQuery = 'videoke karaoke songs';
+    final url =
+        'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=20&q=$searchQuery&key=$apiKey';
+
+    final response = await http.get(Uri.parse(url));
+    final data = jsonDecode(response.body);
+
+    setState(() {
+      videos = (data['items'] as List)
+          .map((item) => {
+                'id': item['id']['videoId'].toString(),
+                'title': item['snippet']['title'].toString(),
+                'thumbnail': item['snippet']['thumbnails']['medium']['url']
+                    .toString(),
+              })
+          .toList()
+          .cast<Map<String, String>>();
+      isLoading = false;
+    });
+
+    if (videos.isNotEmpty) {
+      playVideo(videos[0]['id']!);
+    }
+  }
+
+  void playVideo(String videoId) {
+    setState(() {
+      currentVideoId = videoId;
+    });
+    _controller.loadVideoById(videoId: videoId);
+  }
+
+  void removeCurrentVideo() {
+    if (currentVideoId != null) {
+      setState(() {
+        videos.removeWhere((v) => v['id'] == currentVideoId);
+        currentVideoId = null;
+
+        // auto play next if available
+        if (videos.isNotEmpty) {
+          playVideo(videos[0]['id']!);
+        }
+      });
+    }
+  }
+
+  Future<void> _showSearchDialog() async {
+    TextEditingController searchController = TextEditingController();
+
+    final query = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text("Search Videos", style: TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: searchController,
+          autofocus: true,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: "Enter video title...",
+            hintStyle: TextStyle(color: Colors.white54),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, null),
+            child: const Text("Cancel", style: TextStyle(color: Colors.red)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, searchController.text.trim()),
+            child: const Text("Search", style: TextStyle(color: Colors.lightBlue)),
+          ),
+        ],
+      ),
+    );
+
+    if (query != null && query.isNotEmpty) {
+      await fetchSearchResults(query);
+      setState(() {
+        showSearchResults = true;
+      });
+    }
+  }
+
+  Future<void> fetchSearchResults(String query) async {
+    final apiKey = youtubeApiKey;
+    //const apiKey = 'AIzaSyBnnJYT9c0KY0yFxz7mbeT8t4sbds4_xOo';
+    final url =
+        'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=10&q=$query&key=$apiKey';
+
+    final response = await http.get(Uri.parse(url));
+    final data = jsonDecode(response.body);
+
+    setState(() {
+      searchResults = (data['items'] as List)
+          .map((item) => {
+                'id': item['id']['videoId'].toString(),
+                'title': item['snippet']['title'].toString(),
+                'thumbnail': item['snippet']['thumbnails']['medium']['url']
+                    .toString(),
+              })
+          .toList()
+          .cast<Map<String, String>>();
+    });
   }
 
   @override
@@ -84,28 +204,54 @@ class _VideoScreenState extends State<VideoScreen>
                   child: YoutubePlayer(controller: _controller),
                 ), // end of Positioned (video)
 
-                // Scrollable list below video
-                Positioned(
-                  top: videoHeight,
-                  left: 0,
-                  right: 0,
-                  bottom: 60, // leave space for icons
-                  child: ListView.builder(
-                    itemCount: videos.length,
-                    itemBuilder: (context, index) {
-                      final video = videos[index];
-                      return ListTile(
-                        leading: const Icon(Icons.play_circle_outline,
-                            color: Colors.white),
-                        title: Text(video['title']!,
-                            style: const TextStyle(color: Colors.white)),
-                        onTap: () {
-                          _controller.loadVideoById(videoId: video['id']!);
-                        },
-                      );
-                    },
-                  ),
-                ), // end of Positioned (list)
+                // Show main list or search results
+                if (showList || showSearchResults)
+                  Positioned(
+                    top: videoHeight,
+                    left: 0,
+                    right: 0,
+                    bottom: 60, // leave space for icons
+                    child: ListView.builder(
+                      itemCount: showSearchResults
+                          ? searchResults.length
+                          : videos.length,
+                      itemBuilder: (context, index) {
+                        final video = showSearchResults
+                            ? searchResults[index]
+                            : videos[index];
+                        return ListTile(
+                          leading: Image.network(
+                            video['thumbnail']!,
+                            width: 100,
+                            fit: BoxFit.cover,
+                          ),
+                          title: Text(
+                            video['title']!,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                          onTap: () {
+                            if (currentVideoId != null) {
+                              print("Removing current video: $currentVideoId"); // 👈 print first
+                              videos.removeWhere((v) => v['id'] == currentVideoId);
+                            }                          
+                            setState(() {
+                              // Add search result to the end of main list
+                              if (showSearchResults) {
+                                videos.add(video); // append at the end
+                                showSearchResults = false; // hide search results
+                                showList = true; // show main list
+                              }
+                            });
+
+                            // Then play the tapped video
+                            //playVideo(currentVideoId!);
+                          },
+
+
+                        );
+                      },
+                    ),
+                  ), // end of Positioned (list)
 
                 // Bottom icon bar aligned at bottom
                 Align(
@@ -123,7 +269,7 @@ class _VideoScreenState extends State<VideoScreen>
                           ),
                           IconButton(
                             icon: const Icon(Icons.search, color: Colors.white),
-                            onPressed: () {},
+                            onPressed: _showSearchDialog,
                           ),
                           IconButton(
                             icon: const Icon(Icons.settings, color: Colors.white),
