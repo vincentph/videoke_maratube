@@ -149,7 +149,7 @@ class _VideoScreenState extends State<VideoScreen>
   Future<void> fetchSearchResults(String query) async {
     final apiKey = youtubeApiKey;
     final url =
-        'https://www.googles.com/youtube/v3/search?part=snippet&type=video&maxResults=10&q=$query&key=$apiKey';
+        'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=10&q=$query&key=$apiKey';
 
     final response = await http.get(Uri.parse(url));
     final data = jsonDecode(response.body);
@@ -235,6 +235,13 @@ class _VideoScreenState extends State<VideoScreen>
                               // Add search result to the end of main list
                               if (showSearchResults) {
                                 videos.add(video); // append at the end
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("Video Added"),
+                                    duration: Duration(seconds: 2),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );                                  
                                 showSearchResults = false; // hide search results
                                 showList = true; // show main list
                               }
@@ -268,6 +275,15 @@ class _VideoScreenState extends State<VideoScreen>
                             icon: const Icon(Icons.search, color: Colors.white),
                             onPressed: _showSearchDialog,
                           ),
+                          IconButton(
+                            icon: const Icon(Icons.book, color: Colors.white), // 📖 Playlist icon
+                            onPressed: () {
+                              setState(() {
+                                showSearchResults = false; // hide search results
+                                showList = true; // show playlist videos
+                              });
+                            },
+                          ),                          
                           IconButton(
                             icon: const Icon(Icons.settings, color: Colors.white),
                             onPressed: () {},
