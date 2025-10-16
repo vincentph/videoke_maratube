@@ -60,9 +60,7 @@ class _VideoScreenState extends State<VideoScreen>
 
   }
 
-//  const apiKey = 'AIzaSyBnnJYT9c0KY0yFxz7mbeT8t4sbds4_xOo'; // Replace this
   Future<void> fetchVideos() async {
-    //const apiKey = 'AIzaSyBnnJYT9c0KY0yFxz7mbeT8t4sbds4_xOo';
     final apiKey = youtubeApiKey;
     const searchQuery = 'videoke karaoke songs';
     final url =
@@ -150,9 +148,8 @@ class _VideoScreenState extends State<VideoScreen>
 
   Future<void> fetchSearchResults(String query) async {
     final apiKey = youtubeApiKey;
-    //const apiKey = 'AIzaSyBnnJYT9c0KY0yFxz7mbeT8t4sbds4_xOo';
     final url =
-        'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=10&q=$query&key=$apiKey';
+        'https://www.googles.com/youtube/v3/search?part=snippet&type=video&maxResults=10&q=$query&key=$apiKey';
 
     final response = await http.get(Uri.parse(url));
     final data = jsonDecode(response.body);
