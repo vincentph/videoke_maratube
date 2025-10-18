@@ -48,7 +48,7 @@ class _VideoScreenState extends State<VideoScreen>
   @override
   void initState() {
     super.initState();
-    fetchVideos();
+    // fetchVideos();
 
     //  Listen for video end event
     _controller.listen((event) {
@@ -227,11 +227,24 @@ class _VideoScreenState extends State<VideoScreen>
                             style: const TextStyle(color: Colors.white),
                           ),
                           onTap: () {
+                            //print("Vidoes lenght: $videos.length");
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text("curr v: $currentVideoId, vid len: $videos.length"),
+                                duration: const Duration(seconds: 8),
+                              ),
+                            );                            
+
+
                             if (currentVideoId != null) {
-                              print("Removing current video: $currentVideoId"); // 👈 print first
-                              videos.removeWhere((v) => v['id'] == currentVideoId);
-                            }                          
+                              print("Removing current video: $currentVideoId"); // print first
+                              //videos.removeWhere((v) => v['id'] == currentVideoId);
+                            } else {
+                              playVideo(video["id"]!);
+                            }                         
                             setState(() {
+                              
                               // Add search result to the end of main list
                               if (showSearchResults) {
                                 videos.add(video); // append at the end
@@ -244,6 +257,10 @@ class _VideoScreenState extends State<VideoScreen>
                                 );                                  
                                 showSearchResults = false; // hide search results
                                 showList = true; // show main list
+                                //if(_isVidoesEmpty) {
+                                //  playVideo(video["id"]!);
+                                //  _isVidoesEmpty = false;
+                                //}
                               }
                             });
 
