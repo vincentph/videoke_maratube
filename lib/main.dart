@@ -52,7 +52,7 @@ class _VideoScreenState extends State<VideoScreen>
 
     //  Listen for video end event
     _controller.listen((event) {
-      if (event.playerState == PlayerState.ended) {
+     if (event.playerState == PlayerState.ended) {
         // remove video when it ends
         removeCurrentVideo();
       }
@@ -237,17 +237,21 @@ class _VideoScreenState extends State<VideoScreen>
                             );                            
 
 
-                            if (currentVideoId != null) {
-                              print("Removing current video: $currentVideoId"); // print first
-                              //videos.removeWhere((v) => v['id'] == currentVideoId);
-                            } else {
-                              playVideo(video["id"]!);
-                            }                         
+                            //if (currentVideoId != null) {
+                            //  print("Removing current video: $currentVideoId"); // print first
+                            //  //videos.removeWhere((v) => v['id'] == currentVideoId);
+                            //} else {
+                            //  playVideo(video["id"]!);
+                            //}                         
                             setState(() {
                               
                               // Add search result to the end of main list
                               if (showSearchResults) {
-                                videos.add(video); // append at the end
+                                if(currentVideoId  != null) {
+                                  videos.add(video); // append at the end
+                                } else {
+                                  playVideo(video["id"]!);                                   
+                                }
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text("Video Added"),
