@@ -232,7 +232,7 @@ class _VideoScreenState extends State<VideoScreen>
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text("curr v: $currentVideoId, vid len: $videos.length"),
-                                duration: const Duration(seconds: 8),
+                                duration: const Duration(seconds: 5),
                               ),
                             );                            
 
@@ -265,6 +265,9 @@ class _VideoScreenState extends State<VideoScreen>
                                 //  playVideo(video["id"]!);
                                 //  _isVidoesEmpty = false;
                                 //}
+                              } else {
+                                videos.removeAt(index);
+                                playVideo(video['id']!);
                               }
                             });
 
