@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 import 'params.dart';
 
+
 void main() {
   runApp(VideokeMaraTube());
 }
@@ -48,7 +49,6 @@ class _VideoScreenState extends State<VideoScreen>
   @override
   void initState() {
     super.initState();
-    // fetchVideos();
 
     //  Listen for video end event
     _controller.listen((event) {
@@ -149,7 +149,7 @@ class _VideoScreenState extends State<VideoScreen>
   Future<void> fetchSearchResults(String query) async {
     final apiKey = youtubeApiKey;
     final url =
-        'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=10&q=$query&key=$apiKey';
+        'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=20&q=$query&key=$apiKey';
 
     final response = await http.get(Uri.parse(url));
     final data = jsonDecode(response.body);
@@ -229,20 +229,14 @@ class _VideoScreenState extends State<VideoScreen>
                           onTap: () {
                             //print("Vidoes lenght: $videos.length");
 
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text("curr v: $currentVideoId, vid len: $videos.length"),
-                                duration: const Duration(seconds: 5),
-                              ),
-                            );                            
+                            //ScaffoldMessenger.of(context).showSnackBar(
+                            //  SnackBar(
+                            //    content: Text("curr v: $currentVideoId, vid len: $videos.length"),
+                            //    duration: const Duration(seconds: 5),
+                            //  ),
+                            //);                            
 
 
-                            //if (currentVideoId != null) {
-                            //  print("Removing current video: $currentVideoId"); // print first
-                            //  //videos.removeWhere((v) => v['id'] == currentVideoId);
-                            //} else {
-                            //  playVideo(video["id"]!);
-                            //}                         
                             setState(() {
                               
                               // Add search result to the end of main list
@@ -261,10 +255,6 @@ class _VideoScreenState extends State<VideoScreen>
                                 );                                  
                                 showSearchResults = false; // hide search results
                                 showList = true; // show main list
-                                //if(_isVidoesEmpty) {
-                                //  playVideo(video["id"]!);
-                                //  _isVidoesEmpty = false;
-                                //}
                               } else {
                                 videos.removeAt(index);
                                 playVideo(video['id']!);
@@ -321,9 +311,123 @@ class _VideoScreenState extends State<VideoScreen>
               ],
             );
           } else {
-            // Landscape: Fullscreen
+            // Landscape layout: Fullscreen video
+            return Stack(
+              children: [
+                // Fullscreen video
+                Positioned.fill(
+                  child: YoutubePlayer(controller: _controller),
+                ),
+
+                // Video list / search results at bottom
+                if (showList || showSearchResults)
+                  Positioned(
+                    left: 0,
+                    right: 25, // leave space for side buttons
+                    bottom: 0,
+                    height: 150, // adjust as needed
+                    child: Container(
+                      color: Colors.black.withOpacity(0.7),
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: showSearchResults
+                            ? searchResults.length
+                            : videos.length,
+                        itemBuilder: (context, index) {
+                          final video = showSearchResults
+                              ? searchResults[index]
+                              : videos[index];
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                if (showSearchResults) {
+                                  if (currentVideoId != null) {
+                                    videos.add(video);
+                                  } else {
+                                    playVideo(video['id']!);
+                                  }
+                                  showSearchResults = false;
+                                  showList = true;
+
+                                  // Hide the main video list after 3 seconds
+                                  Future.delayed(const Duration(seconds: 3), () {
+                                    setState(() {
+                                      showList = false;
+                                    });
+                                  });
+
+                                } else {
+                                  videos.removeAt(index);
+                                  playVideo(video['id']!);
+                                  Future.delayed(const Duration(seconds: 3), () {
+                                    setState(() {
+                                      showList = false;
+                                    });
+                                  });                                  
+                                }
+                              });
+                            },
+                            child: Container(
+                              width: 160,
+                              margin: const EdgeInsets.all(8),
+                              child: Column(
+                                children: [
+                                  Image.network(video['thumbnail']!, fit: BoxFit.cover),
+                                  Text(video['title']!,
+                                      style: const TextStyle(color: Colors.white),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+
+                // Right side icon buttons
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 60,
+                  child: Container(
+                    color: Colors.black.withOpacity(0.3),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.home, color: Colors.white),
+                          onPressed: () {},
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.search, color: Colors.white),
+                          onPressed: _showSearchDialog,
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.book, color: Colors.white),
+                          onPressed: () {
+                            setState(() {
+                              showSearchResults = false;
+                              showList = true;
+                            });
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.settings, color: Colors.white),
+                          onPressed: () {},
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+
+
             //_controller.enterFullScreen();
-            return YoutubePlayer(controller: _controller);
+            //return YoutubePlayer(controller: _controller);
           }
         },
       ),
