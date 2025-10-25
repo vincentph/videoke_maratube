@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 import 'params.dart';
+import 'dart:async';
 
 
 void main() {
@@ -34,6 +35,7 @@ class _VideoScreenState extends State<VideoScreen>
       mute: false,
       showControls: true,
       showFullscreenButton: true,
+      origin: 'https://www.youtube-nocookie.com',
     ),
   );
 
@@ -52,6 +54,23 @@ class _VideoScreenState extends State<VideoScreen>
 
     //  Listen for video end event
     _controller.listen((event) {
+
+      if (event.hasError) {
+        // The raw error code
+        final errorCode = event.error;
+
+        // Print it directly
+        print("YouTube Player Error: $errorCode");
+
+        // Optional: print the player state for debugging
+        print("Player state: ${event.playerState}");
+        // Remove current video if you want
+        removeCurrentVideo();
+      }        
+      else {
+        print("NO ERROR");
+      }
+
      if (event.playerState == PlayerState.ended) {
         // remove video when it ends
         removeCurrentVideo();
@@ -110,32 +129,90 @@ class _VideoScreenState extends State<VideoScreen>
 
   Future<void> _showSearchDialog() async {
     TextEditingController searchController = TextEditingController();
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
 
     final query = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        title: const Text("Search Videos", style: TextStyle(color: Colors.white)),
-        content: TextField(
-          controller: searchController,
-          autofocus: true,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            hintText: "Enter video title...",
-            hintStyle: TextStyle(color: Colors.white54),
+      barrierColor: Colors.black54, // dim background slightly
+      builder: (context) {
+        final dialog = AlertDialog(
+          backgroundColor: Colors.grey[900],
+          //title: const Text(
+          //  "Search Videos",
+          //  style: TextStyle(color: Colors.white),
+          //),
+          content: SizedBox(
+            width: 250, // smaller width
+            height: 30, // smaller height          
+            child: TextField(
+              controller: searchController,
+              autofocus: true,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                hintText: "Search video...",
+                hintStyle: TextStyle(color: Colors.white54),
+              ),
+              enableInteractiveSelection: false,
+              contextMenuBuilder: (context, editableTextState) {
+                return const SizedBox.shrink(); // removes emoji/clipboard toolbar
+              },
+              onSubmitted: (value) {
+                Navigator.pop(context, value.trim());
+              },
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, null),
-            child: const Text("Cancel", style: TextStyle(color: Colors.red)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, searchController.text.trim()),
-            child: const Text("Search", style: TextStyle(color: Colors.lightBlue)),
-          ),
-        ],
-      ),
+          actionsPadding: const EdgeInsets.only(right: 10, bottom: 4),
+          actionsAlignment: MainAxisAlignment.end,
+          actions: [
+            
+            // 🔹 Compact text buttons
+            TextButton(
+              style: TextButton.styleFrom(
+                minimumSize: const Size(40, 30),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              onPressed: () => Navigator.pop(context, null),
+              child: const Text(
+                "Cancel",
+                style: TextStyle(color: Colors.red, fontSize: 13),
+              ),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(
+                minimumSize: const Size(40, 30),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              onPressed: () =>
+                  Navigator.pop(context, searchController.text.trim()),
+              child: const Text(
+                "Search",
+                style: TextStyle(color: Colors.lightBlue, fontSize: 13),
+              ),
+            ),
+            
+          ],
+        );
+
+        // If landscape → place it at upper right corner
+        if (isLandscape) {
+          return Align(
+            alignment: Alignment.topRight,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 50, right: 16),
+              child: SizedBox(
+                width: 300, // smaller width
+                child: dialog,
+              ),
+            ),
+          );
+        } else {
+          // Portrait → normal centered dialog
+          return dialog;
+        }
+      },
     );
 
     if (query != null && query.isNotEmpty) {
@@ -143,8 +220,21 @@ class _VideoScreenState extends State<VideoScreen>
       setState(() {
         showSearchResults = true;
       });
+
+      // Auto-hide after 3 seconds (for landscape mode)
+      //if (isLandscape) {
+      //  Future.delayed(const Duration(seconds: 3), () {
+      //    if (mounted) {
+      //      setState(() {
+      //        showSearchResults = false;
+      //      });
+      //    }
+      //  });
+      //}
     }
   }
+
+
 
   Future<void> fetchSearchResults(String query) async {
     final apiKey = youtubeApiKey;
@@ -198,7 +288,9 @@ class _VideoScreenState extends State<VideoScreen>
                   left: 0,
                   right: 0,
                   height: videoHeight,
-                  child: YoutubePlayer(controller: _controller),
+                  child: SafeArea(
+                    child: YoutubePlayer(controller: _controller),
+                  ),                  
                 ), // end of Positioned (video)
 
                 // Show main list or search results
@@ -281,27 +373,29 @@ class _VideoScreenState extends State<VideoScreen>
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          IconButton(
-                            icon: const Icon(Icons.home, color: Colors.white),
-                            onPressed: () {},
-                          ),
+                          //IconButton(
+                          //  icon: const Icon(Icons.home, color: Colors.white),
+                          //  onPressed: () {},
+                          //),
                           IconButton(
                             icon: const Icon(Icons.search, color: Colors.white),
                             onPressed: _showSearchDialog,
                           ),
                           IconButton(
-                            icon: const Icon(Icons.book, color: Colors.white), // 📖 Playlist icon
+                            icon: const Icon(Icons.video_library, color: Colors.white), // 📖 Playlist icon
                             onPressed: () {
                               setState(() {
-                                showSearchResults = false; // hide search results
-                                showList = true; // show playlist videos
+                                // Toggle the video list
+                                showList = !showList;
+                                // If you also want to hide search results when toggling
+                                if (showList) showSearchResults = false;
                               });
                             },
                           ),                          
-                          IconButton(
-                            icon: const Icon(Icons.settings, color: Colors.white),
-                            onPressed: () {},
-                          ),
+                          //IconButton(
+                          //  icon: const Icon(Icons.settings, color: Colors.white),
+                          //  onPressed: () {},
+                          //),
                         ],
                       ),
                     ),
@@ -316,7 +410,9 @@ class _VideoScreenState extends State<VideoScreen>
               children: [
                 // Fullscreen video
                 Positioned.fill(
-                  child: YoutubePlayer(controller: _controller),
+                  child: SafeArea(
+                    child: YoutubePlayer(controller: _controller),
+                  ),                  
                 ),
 
                 // Video list / search results at bottom
@@ -397,27 +493,29 @@ class _VideoScreenState extends State<VideoScreen>
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        IconButton(
-                          icon: const Icon(Icons.home, color: Colors.white),
-                          onPressed: () {},
-                        ),
+                        //IconButton(
+                        //  icon: const Icon(Icons.home, color: Colors.white),
+                        //  onPressed: () {},
+                        //),
                         IconButton(
                           icon: const Icon(Icons.search, color: Colors.white),
                           onPressed: _showSearchDialog,
                         ),
                         IconButton(
-                          icon: const Icon(Icons.book, color: Colors.white),
+                          icon: const Icon(Icons.video_library, color: Colors.white),
                           onPressed: () {
                             setState(() {
-                              showSearchResults = false;
-                              showList = true;
+                              // Toggle the video list
+                              showList = !showList;
+                              // If you also want to hide search results when toggling
+                              if (showList) showSearchResults = false;
                             });
                           },
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.settings, color: Colors.white),
-                          onPressed: () {},
-                        ),
+                        //IconButton(
+                        //  icon: const Icon(Icons.settings, color: Colors.white),
+                        //  onPressed: () {},
+                        //),
                       ],
                     ),
                   ),
