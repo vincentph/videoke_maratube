@@ -277,6 +277,7 @@ class _VideoScreenState extends State<VideoScreen>
       body: OrientationBuilder(
         builder: (context, orientation) {
           if (isPortrait) {
+            final topPadding = MediaQuery.of(context).padding.top;
             final videoHeight = size.width * 9 / 16;
 
             return Stack(
@@ -287,11 +288,18 @@ class _VideoScreenState extends State<VideoScreen>
                   top: 0,
                   left: 0,
                   right: 0,
-                  height: videoHeight,
-                  child: SafeArea(
-                    child: YoutubePlayer(controller: _controller),
-                  ),                  
-                ), // end of Positioned (video)
+                  height: videoHeight + topPadding, // include padding
+                  child: Column(
+                    children: [
+                      SizedBox(height: topPadding),
+                      SizedBox(
+                        height: videoHeight,
+                        width: double.infinity,
+                        child: YoutubePlayer(controller: _controller),
+                      ),
+                    ],
+                  ),
+                ),
 
                 // Show main list or search results
                 if (showList || showSearchResults)
@@ -300,105 +308,120 @@ class _VideoScreenState extends State<VideoScreen>
                     left: 0,
                     right: 0,
                     bottom: 60, // leave space for icons
-                    child: ListView.builder(
-                      itemCount: showSearchResults
-                          ? searchResults.length
-                          : videos.length,
-                      itemBuilder: (context, index) {
-                        final video = showSearchResults
-                            ? searchResults[index]
-                            : videos[index];
-                        return ListTile(
-                          leading: Image.network(
-                            video['thumbnail']!,
-                            width: 100,
-                            fit: BoxFit.cover,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children:[
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(
+                            showList ? 'Lineup' : 'Search Result',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                          title: Text(
-                            video['title']!,
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                          onTap: () {
-                            //print("Vidoes lenght: $videos.length");
-
-                            //ScaffoldMessenger.of(context).showSnackBar(
-                            //  SnackBar(
-                            //    content: Text("curr v: $currentVideoId, vid len: $videos.length"),
-                            //    duration: const Duration(seconds: 5),
-                            //  ),
-                            //);                            
-
-
-                            setState(() {
-                              
-                              // Add search result to the end of main list
-                              if (showSearchResults) {
-                                if(currentVideoId  != null) {
-                                  videos.add(video); // append at the end
-                                } else {
-                                  playVideo(video["id"]!);                                   
-                                }
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text("Video Added"),
-                                    duration: Duration(seconds: 2),
-                                    behavior: SnackBarBehavior.floating,
+                        ),                        
+                        Expanded(
+                          child:                        
+                            ListView.builder(
+                              itemCount: showSearchResults
+                                  ? searchResults.length
+                                  : videos.length,
+                              itemBuilder: (context, index) {
+                                final video = showSearchResults
+                                    ? searchResults[index]
+                                    : videos[index];
+                                return ListTile(
+                                  leading: Image.network(
+                                    video['thumbnail']!,
+                                    width: 100,
+                                    fit: BoxFit.cover,
                                   ),
-                                );                                  
-                                showSearchResults = false; // hide search results
-                                showList = true; // show main list
-                              } else {
-                                videos.removeAt(index);
-                                playVideo(video['id']!);
-                              }
-                            });
+                                  title: Text(
+                                    video['title']!,
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                  onTap: () {
 
-                            // Then play the tapped video
-                            //playVideo(currentVideoId!);
-                          },
+                                    setState(() {
+                                      
+                                      // Add search result to the end of main list
+                                      if (showSearchResults) {
+                                        if(currentVideoId  != null) {
+                                          videos.add(video); // append at the end
+                                        } else {
+                                          playVideo(video["id"]!);                                   
+                                        }
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text("Video Added"),
+                                            duration: Duration(seconds: 2),
+                                            behavior: SnackBarBehavior.floating,
+                                          ),
+                                        );                                  
+                                        showSearchResults = false; // hide search results
+                                        showList = true; // show main list
+                                      } else {
+                                        videos.removeAt(index);
+                                        playVideo(video['id']!);
+                                      }
+                                    });
+
+                                    // Then play the tapped video
+                                    //playVideo(currentVideoId!);
+                                  },
 
 
-                        );
-                      },
+                                );
+                              },
+                            ),
+                        ),
+                      ],
                     ),
                   ), // end of Positioned (list)
 
                 // Bottom icon bar aligned at bottom
                 Align(
                   alignment: Alignment.bottomCenter,
-                  child: Container(
-                    color: Colors.grey[900],
-                    padding: const EdgeInsets.symmetric(vertical: 8),
                     child: SafeArea(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          //IconButton(
-                          //  icon: const Icon(Icons.home, color: Colors.white),
-                          //  onPressed: () {},
-                          //),
-                          IconButton(
-                            icon: const Icon(Icons.search, color: Colors.white),
-                            onPressed: _showSearchDialog,
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.video_library, color: Colors.white), // 📖 Playlist icon
-                            onPressed: () {
-                              setState(() {
-                                // Toggle the video list
-                                showList = !showList;
-                                // If you also want to hide search results when toggling
-                                if (showList) showSearchResults = false;
-                              });
-                            },
-                          ),                          
-                          //IconButton(
-                          //  icon: const Icon(Icons.settings, color: Colors.white),
-                          //  onPressed: () {},
-                          //),
-                        ],
+                      bottom: true, // only protect bottom area
+                      top: false,
+                      left: false,
+                      right: false,   
+                      child: Container(
+                        color: Colors.grey[900],
+                        height: 45,
+                        padding: const EdgeInsets.symmetric(vertical: 4),                                         
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            //IconButton(
+                            //  icon: const Icon(Icons.home, color: Colors.white),
+                            //  onPressed: () {},
+                            //),
+                            IconButton(
+                              icon: const Icon(Icons.search, color: Colors.white),
+                              onPressed: _showSearchDialog,
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.video_library, color: Colors.white), // 📖 Playlist icon
+                              onPressed: () {
+                                setState(() {
+                                  // Toggle the video list
+                                  showList = !showList;
+                                  // If you also want to hide search results when toggling
+                                  if (showList) showSearchResults = false;
+                                });
+                              },
+                            ),                          
+                            //IconButton(
+                            //  icon: const Icon(Icons.settings, color: Colors.white),
+                            //  onPressed: () {},
+                            //),
+                          ],
+                        ),
                       ),
-                    ),
                   ),
                 ), // end of Align (bottom icons)
            
