@@ -43,7 +43,7 @@ class _VideoScreenState extends State<VideoScreen>
   List<Map<String, String>> videos = [];
   List<Map<String, String>> searchResults = [];
   bool isLoading = true;
-  bool showList = true;
+  bool showList = false;
   bool showSearchResults = false;
 
   String? currentVideoId; // track the current playing video
@@ -51,31 +51,20 @@ class _VideoScreenState extends State<VideoScreen>
   @override
   void initState() {
     super.initState();
+    showList = false;
+    showSearchResults = false;
+
 
     //  Listen for video end event
     _controller.listen((event) {
 
-      if (event.hasError) {
-        // The raw error code
-        final errorCode = event.error;
-
-        // Print it directly
-        print("YouTube Player Error: $errorCode");
-
-        // Optional: print the player state for debugging
-        print("Player state: ${event.playerState}");
-        // Remove current video if you want
-        removeCurrentVideo();
-      }        
-      else {
-        print("NO ERROR");
-      }
 
      if (event.playerState == PlayerState.ended) {
         // remove video when it ends
         removeCurrentVideo();
       }
     });    
+    
 
   }
 
@@ -278,6 +267,10 @@ class _VideoScreenState extends State<VideoScreen>
         builder: (context, orientation) {
           if (isPortrait) {
             final topPadding = MediaQuery.of(context).padding.top;
+            final bottomPadding = MediaQuery.of(context).padding.bottom;
+            final screenHeight = MediaQuery.of(context).size.height;
+            final listTitleHeight = 40.0;
+            final iconsHeight = 46.0;
             final videoHeight = size.width * 9 / 16;
 
             return Stack(
@@ -288,97 +281,117 @@ class _VideoScreenState extends State<VideoScreen>
                   top: 0,
                   left: 0,
                   right: 0,
-                  height: videoHeight + topPadding, // include padding
-                  child: Column(
-                    children: [
-                      SizedBox(height: topPadding),
-                      SizedBox(
-                        height: videoHeight,
-                        width: double.infinity,
-                        child: YoutubePlayer(controller: _controller),
-                      ),
-                    ],
+                  height: topPadding, // include padding
+                  child:
+                    SizedBox(
+                      height: topPadding,
+                      width: double.infinity,
+                    ),
                   ),
-                ),
+
+                Positioned(
+                  top: topPadding,
+                  left: 0,
+                  right: 0,
+                  height: videoHeight, // include padding
+                  child:
+                    SizedBox(
+                      height: topPadding,
+                      width: double.infinity,
+                      child: YoutubePlayer(controller: _controller),
+                    ),
+                  ),
+
+
 
                 // Show main list or search results
-                if (showList || showSearchResults)
-                  Positioned(
-                    top: videoHeight,
-                    left: 0,
-                    right: 0,
-                    bottom: 60, // leave space for icons
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children:[
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Text(
-                            showList ? 'Lineup' : 'Search Result',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                //if (showList || showSearchResults)
+                  //For Title of list
+                  if(videos.isNotEmpty || searchResults.isNotEmpty)
+                    Positioned(
+                      top: topPadding + videoHeight,
+                      left: 4,
+                      right: 0,
+                      height: listTitleHeight, // include padding
+                      child:
+                        SizedBox(
+                          height: listTitleHeight,
+                          width: double.infinity,
+                          child: Align(
+                            alignment: Alignment.bottomLeft,
+                            child: 
+                              Text(showSearchResults?"<< Search Result >>":"<< Lineup >>",
+                                style: const TextStyle(
+                                  fontSize: 18,      // increase font size
+                                  fontWeight: FontWeight.bold, 
+                                ),                            
                             ),
                           ),
-                        ),                        
-                        Expanded(
-                          child:                        
-                            ListView.builder(
-                              itemCount: showSearchResults
-                                  ? searchResults.length
-                                  : videos.length,
-                              itemBuilder: (context, index) {
-                                final video = showSearchResults
-                                    ? searchResults[index]
-                                    : videos[index];
-                                return ListTile(
-                                  leading: Image.network(
-                                    video['thumbnail']!,
-                                    width: 100,
-                                    fit: BoxFit.cover,
-                                  ),
-                                  title: Text(
-                                    video['title']!,
-                                    style: const TextStyle(color: Colors.white),
-                                  ),
-                                  onTap: () {
-
-                                    setState(() {
-                                      
-                                      // Add search result to the end of main list
-                                      if (showSearchResults) {
-                                        if(currentVideoId  != null) {
-                                          videos.add(video); // append at the end
-                                        } else {
-                                          playVideo(video["id"]!);                                   
-                                        }
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text("Video Added"),
-                                            duration: Duration(seconds: 2),
-                                            behavior: SnackBarBehavior.floating,
-                                          ),
-                                        );                                  
-                                        showSearchResults = false; // hide search results
-                                        showList = true; // show main list
-                                      } else {
-                                        videos.removeAt(index);
-                                        playVideo(video['id']!);
-                                      }
-                                    });
-
-                                    // Then play the tapped video
-                                    //playVideo(currentVideoId!);
-                                  },
-
-
-                                );
-                              },
-                            ),
                         ),
-                      ],
                     ),
+                  
+                  //For the content of the list
+                  Positioned(
+                    top: topPadding + videoHeight + listTitleHeight,
+                    left: 0,
+                    right: 0,
+                    bottom: bottomPadding + iconsHeight , // leave space for icons, with additional space
+                    child:
+                      ListView.builder(
+                        padding: EdgeInsets.zero, // ← remove extra space
+                        itemCount: showSearchResults
+                            ? searchResults.length
+                            : videos.length,
+                        itemBuilder: (context, index) {
+                          final video = showSearchResults
+                              ? searchResults[index]
+                              : videos[index];
+                          return ListTile(
+                            leading: Image.network(
+                              video['thumbnail']!,
+                              width: 100,
+                              fit: BoxFit.cover,
+                            ),
+                            title: Text(
+                              video['title']!,
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                            onTap: () {
+
+                              setState(() {
+                                
+                                // Add search result to the end of main list
+                                if (showSearchResults) {
+                                  if(currentVideoId  != null) {
+                                    videos.add(video); // append at the end
+                                  } else {
+                                    playVideo(video["id"]!);                                   
+                                  }
+                                  /*
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text("Video Added"),
+                                      duration: Duration(seconds: 2),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                  */                                  
+                                  showSearchResults = false; // hide search results
+                                  showList = true; // show main list
+                                } else {
+                                  videos.removeAt(index);
+                                  playVideo(video['id']!);
+                                }
+                              });
+
+                              // Then play the tapped video
+                              //playVideo(currentVideoId!);
+                            },
+
+
+                          );
+                        },
+                      ),
                   ), // end of Positioned (list)
 
                 // Bottom icon bar aligned at bottom
@@ -391,7 +404,7 @@ class _VideoScreenState extends State<VideoScreen>
                       right: false,   
                       child: Container(
                         color: Colors.grey[900],
-                        height: 45,
+                        height: iconsHeight,
                         padding: const EdgeInsets.symmetric(vertical: 4),                                         
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
