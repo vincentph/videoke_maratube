@@ -30,6 +30,7 @@ class VideoScreen extends StatefulWidget {
 class _VideoScreenState extends State<VideoScreen>
     with AutomaticKeepAliveClientMixin {
 
+
   final _controller = YoutubePlayerController(
     params: YoutubePlayerParams(
       mute: false,
@@ -38,6 +39,7 @@ class _VideoScreenState extends State<VideoScreen>
       origin: 'https://www.youtube-nocookie.com',
     ),
   );
+
 
   // Sample video list (replace with your own video IDs)
   List<Map<String, String>> videos = [];
@@ -51,21 +53,23 @@ class _VideoScreenState extends State<VideoScreen>
   @override
   void initState() {
     super.initState();
-    showList = false;
-    showSearchResults = false;
-
 
     //  Listen for video end event
     _controller.listen((event) {
-
-
      if (event.playerState == PlayerState.ended) {
         // remove video when it ends
         removeCurrentVideo();
+        // auto play next if available
+        if (videos.isNotEmpty) {
+          playVideo(videos[0]['id']!);
+          videos.removeAt(0);
+        }
+
       }
     });    
-    
 
+    showList = false;
+    showSearchResults = false;
   }
 
   Future<void> fetchVideos() async {
@@ -109,9 +113,10 @@ class _VideoScreenState extends State<VideoScreen>
         currentVideoId = null;
 
         // auto play next if available
-        if (videos.isNotEmpty) {
-          playVideo(videos[0]['id']!);
-        }
+        //if (videos.isNotEmpty) {
+
+        //  playVideo(videos[0]['id']!);
+        //}
       });
     }
   }
@@ -320,7 +325,7 @@ class _VideoScreenState extends State<VideoScreen>
                           child: Align(
                             alignment: Alignment.bottomLeft,
                             child: 
-                              Text(showSearchResults?"<< Search Result >>":"<< Lineup >>",
+                              Text(showSearchResults?"<< Search Result >>":(videos.isNotEmpty?"<< Line Up >>":""),
                                 style: const TextStyle(
                                   fontSize: 18,      // increase font size
                                   fontWeight: FontWeight.bold, 
@@ -446,119 +451,10 @@ class _VideoScreenState extends State<VideoScreen>
               children: [
                 // Fullscreen video
                 Positioned.fill(
-                  child: SafeArea(
                     child: YoutubePlayer(controller: _controller),
-                  ),                  
                 ),
-
-                // Video list / search results at bottom
-                if (showList || showSearchResults)
-                  Positioned(
-                    left: 0,
-                    right: 25, // leave space for side buttons
-                    bottom: 0,
-                    height: 150, // adjust as needed
-                    child: Container(
-                      color: Colors.black.withOpacity(0.7),
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: showSearchResults
-                            ? searchResults.length
-                            : videos.length,
-                        itemBuilder: (context, index) {
-                          final video = showSearchResults
-                              ? searchResults[index]
-                              : videos[index];
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                if (showSearchResults) {
-                                  if (currentVideoId != null) {
-                                    videos.add(video);
-                                  } else {
-                                    playVideo(video['id']!);
-                                  }
-                                  showSearchResults = false;
-                                  showList = true;
-
-                                  // Hide the main video list after 3 seconds
-                                  Future.delayed(const Duration(seconds: 3), () {
-                                    setState(() {
-                                      showList = false;
-                                    });
-                                  });
-
-                                } else {
-                                  videos.removeAt(index);
-                                  playVideo(video['id']!);
-                                  Future.delayed(const Duration(seconds: 3), () {
-                                    setState(() {
-                                      showList = false;
-                                    });
-                                  });                                  
-                                }
-                              });
-                            },
-                            child: Container(
-                              width: 160,
-                              margin: const EdgeInsets.all(8),
-                              child: Column(
-                                children: [
-                                  Image.network(video['thumbnail']!, fit: BoxFit.cover),
-                                  Text(video['title']!,
-                                      style: const TextStyle(color: Colors.white),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-
-                // Right side icon buttons
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: 60,
-                  child: Container(
-                    color: Colors.black.withOpacity(0.3),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        //IconButton(
-                        //  icon: const Icon(Icons.home, color: Colors.white),
-                        //  onPressed: () {},
-                        //),
-                        IconButton(
-                          icon: const Icon(Icons.search, color: Colors.white),
-                          onPressed: _showSearchDialog,
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.video_library, color: Colors.white),
-                          onPressed: () {
-                            setState(() {
-                              // Toggle the video list
-                              showList = !showList;
-                              // If you also want to hide search results when toggling
-                              if (showList) showSearchResults = false;
-                            });
-                          },
-                        ),
-                        //IconButton(
-                        //  icon: const Icon(Icons.settings, color: Colors.white),
-                        //  onPressed: () {},
-                        //),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            );
-
+              ]
+            );  
 
             //_controller.enterFullScreen();
             //return YoutubePlayer(controller: _controller);
